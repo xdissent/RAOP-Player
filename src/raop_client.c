@@ -297,6 +297,8 @@ static int rsa_encrypt(u8_t *text, int len, u8_t *res)
 	u8_t modules[256];
 	u8_t exponent[8];
 	int size;
+	BIGNUM *bnn;
+	BIGNUM *bne;
 	char n[] =
 			"59dE8qLieItsH1WgjrcFRKj6eUWqi+bGLOX1HL3U3GhC/j0Qg90u3sG/1CUtwC"
 			"5vOYvfDmFI6oSFXi5ELabWJmT2dKHzBJKa3k9ok+8t9ucRqMd6DZHJ2YCCLlDR"
@@ -308,9 +310,15 @@ static int rsa_encrypt(u8_t *text, int len, u8_t *res)
 
 	rsa = RSA_new();
 	size = base64_decode(n, modules);
-	rsa->n = BN_bin2bn(modules, size, NULL);
+	bnn = BN_bin2bn(modules, size, NULL);
 	size = base64_decode(e, exponent);
-	rsa->e = BN_bin2bn(exponent, size, NULL);
+	bne = BN_bin2bn(exponent, size, NULL);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+	rsa->n = bnn;
+	rsa->e = bne;
+#else
+	RSA_set0_key(rsa, bnn, bne, NULL);
+#endif
 	size = RSA_public_encrypt(len, text, res, rsa, RSA_PKCS1_OAEP_PADDING);
 	RSA_free(rsa);
 
